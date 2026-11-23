@@ -11,7 +11,60 @@ st.set_page_config(
     layout="wide"
 )
 DEFAULT_FILE = Path(__file__).parent / "SSSVV_SET_Analytics_Summary_FINAL.xlsx"
+USERS = {
+    "madhu": {
+        "password": "admin123",
+        "role": "admin"
+    },
+    "chandra": {
+        "password": "admin123",
+        "role": "admin"
+    },
+    "admin3": {
+        "password": "admin123",
+        "role": "admin"
+    },
+    "member1": {
+        "password": "member123",
+        "role": "member"
+    },
+    "viewer1": {
+        "password": "view123",
+        "role": "viewer"
+    }
+}
+# =====================================
+# LOGIN SYSTEM
+# =====================================
 
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
+if "role" not in st.session_state:
+    st.session_state.role = None
+
+if not st.session_state.logged_in:
+
+    st.title("🔐 SSSVV Dashboard Login")
+
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+
+    if st.button("Login"):
+
+        if username in USERS and USERS[username]["password"] == password:
+
+            st.session_state.logged_in = True
+            st.session_state.role = USERS[username]["role"]
+            st.session_state.username = username
+
+            st.success("Login successful")
+            st.rerun()
+
+        else:
+            st.error("Invalid username or password")
+
+    st.stop()
 @st.cache_data
 def load_data(file_bytes):
     xls = pd.ExcelFile(BytesIO(file_bytes))
@@ -19,7 +72,21 @@ def load_data(file_bytes):
     states = pd.read_excel(xls, sheet_name="State-wise Analysis", header=2)
     schools = pd.read_excel(xls, sheet_name="School-wise Analysis", header=2)
     return overall, states, schools
+# =====================================
+# USER INFO & LOGOUT
+# =====================================
 
+with st.sidebar:
+    st.markdown("---")
+
+    st.info(f"👤 User: {st.session_state.username}")
+    st.success(f"🔑 Role: {st.session_state.role.title()}")
+
+    if st.button("🚪 Logout"):
+        st.session_state.logged_in = False
+        st.session_state.role = None
+        st.session_state.username = None
+        st.rerun()
 # Header Section
 
 logo_col, title_col = st.columns([1, 5])
@@ -233,19 +300,7 @@ state_champions = school_filtered[
     ["State", "School Name", "Sessions Attended"]
 ]
 
-def assign_category(attended):
-    if attended >= 9:
-        return "🥇 Gold"
-    elif attended >= 7:
-        return "🥈 Silver"
-    elif attended >= 5:
-        return "🥉 Bronze"
-    else:
-        return "🔴 Needs Support"
 
-school_filtered["Category"] = school_filtered[
-    "Sessions Attended"
-].apply(assign_category)
 if not chosen_sessions:
     st.warning("Select at least one SET session in the sidebar to display attendance charts.")
     st.stop()
@@ -531,11 +586,12 @@ download_data = excel_bytes({
     "State Analysis": state_filtered,
     "School Analysis": school_filtered,
 })
-st.download_button(
-    "Download filtered dashboard data (Excel)",
-    data=download_data,
-    file_name="SSSVV_SET_Dashboard_Filtered_Data.xlsx",
-    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-)
+if st.session_state.role in ["admin", "member"]:
 
+    st.download_button(
+        "Download filtered dashboard data (Excel)",
+        data=download_data,
+        file_name="SSSVV_SET_Dashboard_Filtered_Data.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
 st.caption("Data source: the supplied SSSVV_SET_Analytics_Summary_FINAL.xlsx workbook. Verify any future workbook revision before publishing.")
